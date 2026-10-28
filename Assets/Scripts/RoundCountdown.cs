@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -22,6 +23,7 @@ public class RoundCountdown : MonoBehaviour
     [SerializeField] private float heightOffset = 0.1f;
     [SerializeField] private float followSpeed = 6f; // eased follow so the number stays in view if the player turns
     [SerializeField] private float fontSize = 260f;
+    [SerializeField] private TMP_FontAsset font; // optional; empty = TMP default font
     [SerializeField] private string goText = "GO!";
     [SerializeField] private Color numberColor = Color.white;
     [SerializeField] private Color goColor = new Color(0.2f, 1f, 0.3f, 1f);
@@ -46,7 +48,7 @@ public class RoundCountdown : MonoBehaviour
 
         if (label == null)
         {
-            label = new WorldTextLabel("RoundCountdown", fontSize, new Vector2(800f, 400f));
+            label = new WorldTextLabel("RoundCountdown", fontSize, new Vector2(800f, 400f), 0.001f, font);
         }
         label.PlaceInFront(WorldTextLabel.ResolveHead(headAnchor), distanceFromHead, heightOffset);
         label.SetActive(true);

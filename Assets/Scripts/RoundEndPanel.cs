@@ -40,6 +40,9 @@ public class RoundEndPanel : MonoBehaviour
     // Turn this on to see the keyboard after every round (zero-point entries are never saved). Turn it off for real play.
     [SerializeField] private bool forceNameEntryForTesting = false;
 
+    [Header("Font")]
+    [SerializeField] private TMP_FontAsset font; // optional; empty = TMP default font
+
     [Header("Colors")]
     [SerializeField] private Color backgroundColor = new Color(0.05f, 0.05f, 0.1f, 0.92f);
     [SerializeField] private Color keyColor = new Color(0.18f, 0.2f, 0.32f, 1f);
@@ -402,6 +405,7 @@ public class RoundEndPanel : MonoBehaviour
         tmp.alignment = alignment;
         tmp.color = textColor;
         tmp.raycastTarget = false;
+        if (font != null) tmp.font = font;
 
         RectTransform rt = tmp.rectTransform;
         rt.anchorMin = new Vector2(0.5f, 0.5f);

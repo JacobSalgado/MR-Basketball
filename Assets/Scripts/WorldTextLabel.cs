@@ -13,7 +13,7 @@ public class WorldTextLabel
 
     private readonly float baseScale;
 
-    public WorldTextLabel(string name, float fontSize, Vector2 canvasSize, float scale = 0.001f)
+    public WorldTextLabel(string name, float fontSize, Vector2 canvasSize, float scale = 0.001f, TMP_FontAsset font = null)
     {
         baseScale = scale;
 
@@ -28,6 +28,7 @@ public class WorldTextLabel
         textObject.transform.SetParent(Root.transform, false);
 
         Text = textObject.AddComponent<TextMeshProUGUI>();
+        if (font != null) Text.font = font; // otherwise the TMP default font is used
         Text.fontSize = fontSize;
         Text.alignment = TextAlignmentOptions.Center;
         Text.raycastTarget = false;

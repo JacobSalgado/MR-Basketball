@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 /// <summary>
@@ -14,6 +15,7 @@ public class PlacementPrompt : MonoBehaviour
     [SerializeField] private float heightOffset = -0.3f;
     [SerializeField] private float followSpeed = 4f;
     [SerializeField] private float fontSize = 56f;
+    [SerializeField] private TMP_FontAsset font; // optional; empty = TMP default font
 
     [Header("Text")]
     [SerializeField] private string readyText = "PRESS THE RIGHT TRIGGER\nTO PLACE THE HOOP";
@@ -30,7 +32,7 @@ public class PlacementPrompt : MonoBehaviour
     {
         if (label == null)
         {
-            label = new WorldTextLabel("PlacementPrompt", fontSize, new Vector2(1000f, 240f));
+            label = new WorldTextLabel("PlacementPrompt", fontSize, new Vector2(1000f, 240f), 0.001f, font);
         }
 
         if (!visible)
