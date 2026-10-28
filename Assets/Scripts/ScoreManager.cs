@@ -1,9 +1,11 @@
-using Unity.VisualScripting;
+using System;
 using UnityEngine;
 
 /// <summary>
-/// Tracks score and a countdown timer for a play session, and persists the 
-/// best score across sessions via PlayerPrefs. 
+/// Tracks score and a countdown timer for a play session, and persists the
+/// best score across sessions via PlayerPrefs. Place on a single persistent
+/// GameObject in the scene. Raises events so UI (ScoreUI) can react instead
+/// of polling every frame.
 /// </summary>
 public class ScoreManager : MonoBehaviour
 {
@@ -17,6 +19,13 @@ public class ScoreManager : MonoBehaviour
     public int HighScore { get; private set; }
     public float TimeRemaining { get; private set; }
     public bool IsGameActive { get; private set; }
+
+    /// <summary>Fired whenever CurrentScore changes.</summary>
+    public event Action<int> OnScoreChanged;
+    /// <summary>Fired every frame the game is active, with seconds remaining.</summary>
+    public event Action<float> OnTimeChanged;
+    /// <summary>Fired once when the timer hits zero, with the final score.</summary>
+    public event Action<int> OnGameEnded;
 
     private const string HighScoreKey = "HighScore";
 
@@ -32,12 +41,13 @@ public class ScoreManager : MonoBehaviour
         HighScore = PlayerPrefs.GetInt(HighScoreKey, 0);
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
         if (!IsGameActive) return;
 
         TimeRemaining -= Time.deltaTime;
+        OnTimeChanged?.Invoke(Mathf.Max(TimeRemaining, 0f));
+
         if (TimeRemaining <= 0f)
         {
             EndGame();
@@ -49,6 +59,9 @@ public class ScoreManager : MonoBehaviour
         CurrentScore = 0;
         TimeRemaining = gameDuration;
         IsGameActive = true;
+
+        OnScoreChanged?.Invoke(CurrentScore);
+        OnTimeChanged?.Invoke(TimeRemaining);
     }
 
     public void RegisterScore(bool wasSwish)
@@ -57,6 +70,8 @@ public class ScoreManager : MonoBehaviour
 
         int points = 1 + (wasSwish ? swishBonus : 0);
         CurrentScore += points;
+        Debug.Log("Register Score called! Current score is: " + CurrentScore);
+        OnScoreChanged?.Invoke(CurrentScore);
     }
 
     private void EndGame()
@@ -70,5 +85,7 @@ public class ScoreManager : MonoBehaviour
             PlayerPrefs.SetInt(HighScoreKey, HighScore);
             PlayerPrefs.Save();
         }
+
+        OnGameEnded?.Invoke(CurrentScore);
     }
 }

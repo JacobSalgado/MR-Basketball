@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 4256067550603316203}
   - component: {fileID: 1577269636138983889}
   - component: {fileID: 3100129569045884503}
-  - component: {fileID: 8505697712089173489}
+  - component: {fileID: 1232861736764945859}
   m_Layer: 0
   m_Name: Basketball
   m_TagString: Basketball
@@ -133,8 +133,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BallContactTracker
   boardTag: HoopBoard
---- !u!64 &8505697712089173489
-MeshCollider:
+--- !u!135 &1232861736764945859
+SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -151,7 +151,6 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 2122681682525997855, guid: 6b7e99fb01590ee4881429e0ce040190, type: 3}
+  serializedVersion: 3
+  m_Radius: 0.02528567
+  m_Center: {x: -0.0000000055879354, y: 0.000000009313226, z: 0.0000000018626451}

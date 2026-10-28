@@ -1,6 +1,3 @@
-using Meta.XR;
-using Meta.XR.MRUtilityKit;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class BallShooting : MonoBehaviour
@@ -12,16 +9,10 @@ public class BallShooting : MonoBehaviour
     [SerializeField] private Transform rightController; // origin of the spawned basketball
     [SerializeField] private GameObject basketballPrefab; // prefab of basketball
 
-    private Transform hoopTarget; // rim 
-
     [Header("Aiming")]
-    [SerializeField] private float maxYawDegrees = 35f; // stick X -> left/right curve
-    [SerializeField] private float minPitchDegrees = 0f; // stick at rest -> lowest arc
-    [SerializeField] private float maxPitchDegrees = 50f; // stick Y at full push -> highest arc
     [SerializeField] private float minLaunchSpeed = 3f;
     [SerializeField] private float maxLaunchSpeed = 9f;
-    [SerializeField] private float chargeDeadzone = 0.15f; // stick must exceed this to start charging
-    // [SerializeField] private float releaseThreshold = 0.1f; // letting stick fall below this fires the shot
+    [SerializeField] private float chargeDeadzone = 0.15f; // stick must exceed this to start (and stay) aiming
 
     [Header("Trajectory Preview")]
     [SerializeField] private LineRenderer trajectoryLine;
@@ -33,25 +24,21 @@ public class BallShooting : MonoBehaviour
     [SerializeField] private float outOfPlayHeight = -2f; // relative to spawn height, ball below this is "gone"
 
     [Header("Physics Feel")]
-    [SerializeField] private float ballMass = 0.6f; // kg, roughly equivalent to a real bball
+    [SerializeField] private float ballMass = 0.6f; // kg, roughly a real basketball
     [SerializeField] private float ballDrag = 0.05f;
     [SerializeField] private float ballAngularDrag = 0.3f;
     [SerializeField] private float backspinAmount = 8f; // radians/sec applied at release
 
-
     [Header("Instant Placement Controller Reference")]
-    public InstantPlacementController instantPlacementController;
+    [SerializeField] private InstantPlacementController instantPlacementController;
 
     private bool activeBall = false;
     private GameObject basketballInstance;
     private Rigidbody basketballRb;
-    private BallContactTracker basketballContactTracker_;
+    private BallContactTracker basketballContactTracker;
+    private Transform hoopTarget; // kept for scoring/UI reference, no longer used for aiming
 
-    // Aim States
-    private float currentYaw;
-    private float currentPitch;
     private float currentSpeed01; // 0-1, how "charged" the shot is
-
     private float flightTimer;
 
     private void Awake()
@@ -61,13 +48,13 @@ public class BallShooting : MonoBehaviour
 
         basketballRb = basketballInstance.GetComponent<Rigidbody>();
         basketballRb.isKinematic = true; // no gravity yet - controlled manually while in-hand
-
         ConfigureBallPhysics(basketballRb);
         basketballInstance.SetActive(false);
 
-        basketballContactTracker_ = basketballInstance.GetComponent<BallContactTracker>();
+        basketballContactTracker = basketballInstance.GetComponent<BallContactTracker>();
 
-
+        // Must match trajectoryPoints or SetPosition() throws IndexOutOfRangeException
+        // once DrawTrajectoryPreview tries to write past the LineRenderer's default count of 2
         if (trajectoryLine != null)
         {
             trajectoryLine.positionCount = trajectoryPoints;
@@ -75,8 +62,7 @@ public class BallShooting : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
         if (instantPlacementController.hoopPlaced && !activeBall)
         {
@@ -88,27 +74,29 @@ public class BallShooting : MonoBehaviour
         switch (state)
         {
             case ShotState.InHand:
-                CheckForChargeStart(); //stick exceeds deadzone -> move to Aiming
+                CheckForChargeStart(); // stick exceeds deadzone -> move to Aiming
                 break;
             case ShotState.Aiming:
-                HandleAiming(); // read stick, update yaw/pitch/speed, draw trajectory, check release
+                HandleAiming(); // read controller pointing direction + stick power, draw trajectory, check release/cancel
                 break;
             case ShotState.InFlight:
-                HandleFlightTimeout();  // watch for miss (fell out of play / timed out)
+                HandleFlightTimeout(); // watch for miss (fell out of play / timed out)
                 break;
         }
     }
 
-    /**
-     * @brief sets mass/drag for basketball
-     */
+    /// <summary>
+    /// Sets mass/drag for realistic weight and switches to Continuous Dynamic
+    /// collision detection so a fast-moving ball can't tunnel through the thin
+    /// rim collider between physics steps.
+    /// </summary>
     private void ConfigureBallPhysics(Rigidbody rb)
     {
         rb.mass = ballMass;
         rb.linearDamping = ballDrag;
         rb.angularDamping = ballAngularDrag;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.interpolation = RigidbodyInterpolation.Interpolate; // smoothens visual motion between physics steps
+        rb.interpolation = RigidbodyInterpolation.Interpolate; // smooths visual motion between physics steps, important in headset
     }
 
     /**
@@ -131,40 +119,26 @@ public class BallShooting : MonoBehaviour
 
         Vector2 stick = OVRInput.Get(OVRInput.Axis2D.SecondaryThumbstick);
 
-        // stick X curves the shot left/right
-        currentYaw = stick.x * maxYawDegrees;
-
-        // lets the stick fall back to neutral WITHOUT firing cancels the aim entirely.
+        // Letting the stick fall back to neutral WITHOUT firing cancels the aim entirely
+        // and hides the trajectory line — without this there was no way back to InHand.
         if (stick.sqrMagnitude < (chargeDeadzone * chargeDeadzone))
         {
             CancelAiming();
             return;
         }
 
-        // stick Y (forward push) drives both arc height and power together
-        currentSpeed01 = Mathf.Clamp01(stick.y); // clamp since pulling stick back gives negative values
-        currentPitch = Mathf.Lerp(minPitchDegrees, maxPitchDegrees, currentSpeed01);
+        // Stick Y (forward push) drives ONLY power now — direction comes straight from
+        // wherever the controller is physically pointed, teleporter-style. Tilt/move your
+        // hand to reshape the arc freely instead of it snapping toward the hoop.
+        currentSpeed01 = Mathf.Clamp01(stick.y);
 
         Vector3 launchVelocity = ComputeLaunchVelocity();
         DrawTrajectoryPreview(rightController.position, launchVelocity);
 
-        // trigger press confirms the shot - separate from the stick
+        // Trigger press confirms the shot — separate from the stick, like a teleporter's confirm button
         if (OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger))
         {
             FireShot(launchVelocity);
-        }
-    }
-
-    private void HandleFlightTimeout()
-    {
-        flightTimer += Time.deltaTime;
-
-        bool fellOutOfPlay = basketballInstance.transform.position.y < rightController.position.y + outOfPlayHeight;
-        bool tookTooLong = flightTimer > maxFlightTime;
-
-        if (tookTooLong || fellOutOfPlay)
-        {
-            RespawnBall();
         }
     }
 
@@ -176,17 +150,9 @@ public class BallShooting : MonoBehaviour
 
     private Vector3 ComputeLaunchVelocity()
     {
-        Vector3 toHoop = hoopTarget.position - rightController.position;
-        Vector3 horizontalDir = new Vector3(toHoop.x, 0f, toHoop.z).normalized;
-
-        Vector3 aimedHorizontal = Quaternion.AngleAxis(currentYaw, Vector3.up) * horizontalDir;
-
-        float pitchRad = currentPitch * Mathf.Deg2Rad;
-        Vector3 launchDir = new Vector3(
-            aimedHorizontal.x * Mathf.Cos(pitchRad),
-            Mathf.Sin(pitchRad),
-            aimedHorizontal.z * Mathf.Cos(pitchRad)
-        ).normalized;
+        // Direction comes straight from where the controller is physically pointed —
+        // this is the free-aim behavior: no clamp, no auto-correction toward the hoop.
+        Vector3 launchDir = rightController.forward.normalized;
 
         float speed = Mathf.Lerp(minLaunchSpeed, maxLaunchSpeed, currentSpeed01);
         return launchDir * speed;
@@ -205,17 +171,37 @@ public class BallShooting : MonoBehaviour
 
     private void FireShot(Vector3 launchVelocity)
     {
-        // unparent before enabling physics - otherwise the Rigidbody keeps inheriting
-        // the moving controller's transform on top of its own physics motion, which
-        // causes erratic/compounded flight instead of a clean launch
+        // Unparent before enabling physics — otherwise the Rigidbody keeps inheriting
+        // the moving controller's transform on top of its own physics motion, causing
+        // erratic/compounded flight instead of a clean launch.
         basketballInstance.transform.SetParent(null);
+
+        basketballContactTracker?.ResetContact();
 
         basketballRb.isKinematic = false;
         basketballRb.linearVelocity = launchVelocity;
 
+        // Real shots carry backspin off the fingertips — affects how the ball deflects
+        // on rim/backboard contact, not just how it looks mid-flight.
+        Vector3 spinAxis = Vector3.Cross(Vector3.up, launchVelocity.normalized);
+        basketballRb.angularVelocity = spinAxis * backspinAmount;
+
         trajectoryLine.enabled = false;
         flightTimer = 0f;
         state = ShotState.InFlight;
+    }
+
+    private void HandleFlightTimeout()
+    {
+        flightTimer += Time.deltaTime;
+
+        bool fellOutOfPlay = basketballInstance.transform.position.y < rightController.position.y + outOfPlayHeight;
+        bool tookTooLong = flightTimer > maxFlightTime;
+
+        if (fellOutOfPlay || tookTooLong)
+        {
+            RespawnBall();
+        }
     }
 
     private void RespawnBall()
@@ -225,10 +211,17 @@ public class BallShooting : MonoBehaviour
         basketballInstance = Instantiate(basketballPrefab, rightController.position, rightController.rotation, rightController);
         basketballRb = basketballInstance.GetComponent<Rigidbody>();
         basketballRb.isKinematic = true; // back to hand-controlled, no gravity until next shot
+        ConfigureBallPhysics(basketballRb);
+        basketballContactTracker = basketballInstance.GetComponent<BallContactTracker>();
 
         state = ShotState.InHand;
     }
 
+    /// <summary>
+    /// Call this from ScoreZone the moment the ball passes through the net.
+    /// Ends the flight immediately instead of waiting for HandleFlightTimeout,
+    /// and reuses the same respawn path as a miss.
+    /// </summary>
     public void OnBallResult(bool madeShot)
     {
         if (state != ShotState.InFlight) return;
