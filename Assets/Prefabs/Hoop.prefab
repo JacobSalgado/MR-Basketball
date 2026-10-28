@@ -725,6 +725,7 @@ GameObject:
   m_Component:
   - component: {fileID: 423561916457534525}
   - component: {fileID: 6104275082024680521}
+  - component: {fileID: 6987739559004128728}
   m_Layer: 0
   m_Name: ScoreZone
   m_TagString: Untagged
@@ -770,6 +771,20 @@ CapsuleCollider:
   m_Height: 0.067498125
   m_Direction: 1
   m_Center: {x: -0.001204554, y: 0.058755387, z: 0.0060234964}
+--- !u!114 &6987739559004128728
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8076883023822094250}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 329a26d67231f6c4eb8c1a454a7b7660, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreZone
+  ballTag: Basketball
+  ballShooting_: {fileID: 0}
 --- !u!1 &8597995983599261779
 GameObject:
   m_ObjectHideFlags: 0

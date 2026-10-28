@@ -7,7 +7,16 @@ using UnityEngine;
 public class ScoreZone : MonoBehaviour
 {
     [SerializeField] private string ballTag = "Basketball";
-    [SerializeField] private BallShooting ballShooting_;
+    [SerializeField] private BallShooting ballShooting;
+
+    private void Awake()
+    { 
+        // this component lives inside the hoop prefab, which is instantiated at runtime.
+        // A prefab can't hold a reference to a scene object, so the Inspector slot will be 
+        // empty on the spawned copy so look the shooter up instead
+        if (ballShooting == null)
+            ballShooting = FindFirstObjectByType<BallShooting>();
+    }
 
     private void OnTriggerEnter(Collider other)
     {
@@ -26,8 +35,8 @@ public class ScoreZone : MonoBehaviour
         if (ScoreManager.Instance != null)
             ScoreManager.Instance.RegisterScore(wasSwish);
 
-        if (ballShooting_ != null)
-            ballShooting_.OnBallResult(true);
+        if (ballShooting != null)
+            ballShooting.OnBallResult(true);
 
     }
 }
