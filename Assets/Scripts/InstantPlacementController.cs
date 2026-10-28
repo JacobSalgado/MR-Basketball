@@ -1,3 +1,4 @@
+using System;
 using Meta.XR;
 using Meta.XR.MRUtilityKit;
 using UnityEngine;
@@ -15,10 +16,19 @@ public class InstantPlacementController : MonoBehaviour
 
     [Header("Raycast Visual")]
     [SerializeField] private LineRenderer lineRenderer;
-    [SerializeField] private GameObject reticlePrefab;
     [SerializeField] private float maxRayDistance = 5f;
     [SerializeField] private Color validColor = Color.cyan;
     [SerializeField] private Color invalidColor = Color.red;
+
+    [Header("Ghost Preview")]
+    [SerializeField, Range(0.05f, 1f)] private float ghostOpacity = 0.35f;
+    // Optional: a transparent material (any shader) used for every part of the ghost. Leave empty to
+    // auto-convert copies of the hoop's own materials. Assign one if you build to the headset — see notes.
+    [SerializeField] private Material ghostMaterial;
+
+    [Header("Prompt / Countdown")]
+    [SerializeField] private PlacementPrompt placementPrompt;
+    [SerializeField] private RoundCountdown roundCountdown;
 
     [Header("Raycast Manager")]
     [SerializeField] private EnvironmentRaycastManager raycastManager;
@@ -36,7 +46,15 @@ public class InstantPlacementController : MonoBehaviour
     public Transform RightControllerAnchor => rightControllerAnchor;
     public Material RayMaterial => lineRenderer != null ? lineRenderer.sharedMaterial : null;
 
-    private GameObject reticleInstance;
+    /// <summary>The countdown runner, so the end-of-round panel can restart a round without placing a new hoop.</summary>
+    public RoundCountdown Countdown => roundCountdown;
+
+    /// <summary>Raised right after a hoop is placed (before the countdown begins).</summary>
+    public event Action OnHoopPlaced;
+    /// <summary>Raised when the placed hoop is removed to let the player pick a new spot.</summary>
+    public event Action OnHoopRemoved;
+
+    private GameObject ghostInstance;
 
     // cached from the last raycast this frame, consumed by TryPlace on trigger press
     private bool hasValidHit = false;
@@ -44,22 +62,38 @@ public class InstantPlacementController : MonoBehaviour
     private MRUKAnchor cachedAnchor;
     private EnvironmentRaycastHit cachedEnvHit; // live-depth hit, used for actual placement
 
+    // Ignores the trigger for a moment after repositioning starts: the same click that pressed
+    // "MOVE HOOP" on the end panel would otherwise also count as "place the hoop" in the same frame.
+    private float ignoreTriggerUntil = 0f;
+    private const float RepositionInputLockSeconds = 0.4f;
+
     // restricts raycasts to wall surfaces only
     private readonly LabelFilter wallFilter = new LabelFilter(MRUKAnchor.SceneLabels.WALL_FACE);
 
     private void Awake()
     {
-        if (reticlePrefab != null)
+        if (hoop != null)
         {
-            reticleInstance = Instantiate(reticlePrefab);
-            reticleInstance.SetActive(false);
+            ghostInstance = BuildGhost();
         }
+        else
+        {
+            Debug.LogWarning("InstantPlacementController: no Hoop prefab assigned, so there is nothing to preview or place.", this);
+        }
+
+        if (placementPrompt == null) placementPrompt = FindOrAdd<PlacementPrompt>();
+        if (roundCountdown == null) roundCountdown = FindOrAdd<RoundCountdown>();
 
         if (lineRenderer != null)
         {
             lineRenderer.positionCount = 2;
             lineRenderer.enabled = false;
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (ghostInstance != null) Destroy(ghostInstance);
     }
 
     private void Update()
@@ -99,10 +133,25 @@ public class InstantPlacementController : MonoBehaviour
 
         UpdateRayVisual(ray, hasValidHit, cachedEnvHit);
 
-        if (OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger))
+        if (placementPrompt != null) placementPrompt.Show(hasValidHit);
+
+        if (Time.time >= ignoreTriggerUntil && OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger))
         {
             TryPlace();
         }
+    }
+
+    /// <summary>
+    /// The one place that decides where the hoop sits for a given wall hit, used by BOTH the ghost
+    /// preview and the real placement so what the player sees is exactly what they get.
+    /// Offsets outward along the wall normal so the backboard sits flush against the wall instead of
+    /// clipping into it (pivot offset + depth-occlusion buffer). Uses the live-depth hit, not the
+    /// room-plane hit, since that's what passthrough occlusion actually renders against.
+    /// </summary>
+    private void ComputePlacementPose(EnvironmentRaycastHit envHit, out Vector3 position, out Quaternion rotation)
+    {
+        position = envHit.point + envHit.normal * (hoopBackOffset + clippingBuffer);
+        rotation = Quaternion.LookRotation(envHit.normal, Vector3.up);
     }
 
     private void UpdateRayVisual(Ray ray, bool didHit, EnvironmentRaycastHit envHit)
@@ -110,44 +159,47 @@ public class InstantPlacementController : MonoBehaviour
         if (didHit)
         {
             // line from controller to hit point (the accurate live-depth point)
-            lineRenderer.enabled = true;
-            lineRenderer.SetPosition(0, ray.origin);
-            lineRenderer.SetPosition(1, envHit.point);
-            lineRenderer.startColor = validColor;
-            lineRenderer.endColor = validColor;
-
-            // Reticle sits flush on the surface, oriented to its normal — uses envHit so
-            // the preview matches exactly where the hoop will actually land.
-            if (reticleInstance != null)
+            if (lineRenderer != null)
             {
-                reticleInstance.SetActive(true);
-                reticleInstance.transform.SetPositionAndRotation(
-                    envHit.point,
-                    Quaternion.LookRotation(envHit.normal, Vector3.up)
-                    );
+                lineRenderer.enabled = true;
+                lineRenderer.SetPosition(0, ray.origin);
+                lineRenderer.SetPosition(1, envHit.point);
+                lineRenderer.startColor = validColor;
+                lineRenderer.endColor = validColor;
+            }
+
+            // Ghost hoop sits exactly where the real one will land.
+            if (ghostInstance != null)
+            {
+                ComputePlacementPose(envHit, out Vector3 ghostPosition, out Quaternion ghostRotation);
+                ghostInstance.SetActive(true);
+                ghostInstance.transform.SetPositionAndRotation(ghostPosition, ghostRotation);
             }
         }
         else
         {
-            // no valid hit - show the ray at max length in "invalid" color, hide reticle
-            lineRenderer.enabled = true;
-            lineRenderer.SetPosition(0, ray.origin);
-            lineRenderer.SetPosition(1, ray.origin + ray.direction * maxRayDistance);
-            lineRenderer.startColor = invalidColor;
-            lineRenderer.endColor = invalidColor;
+            // no valid hit - show the ray at max length in "invalid" color, hide the ghost
+            if (lineRenderer != null)
+            {
+                lineRenderer.enabled = true;
+                lineRenderer.SetPosition(0, ray.origin);
+                lineRenderer.SetPosition(1, ray.origin + ray.direction * maxRayDistance);
+                lineRenderer.startColor = invalidColor;
+                lineRenderer.endColor = invalidColor;
+            }
 
-            if (reticleInstance != null)
-                reticleInstance.SetActive(false);
+            if (ghostInstance != null) ghostInstance.SetActive(false);
         }
     }
 
     /**
-     * @brief hides linerenderer and reticleinstance
+     * @brief hides linerenderer, ghost hoop and prompt
      */
     private void HideVisual()
     {
         if (lineRenderer != null) lineRenderer.enabled = false;
-        if (reticleInstance != null) reticleInstance.SetActive(false);
+        if (ghostInstance != null) ghostInstance.SetActive(false);
+        if (placementPrompt != null) placementPrompt.Hide();
     }
 
     /**
@@ -155,20 +207,12 @@ public class InstantPlacementController : MonoBehaviour
      */
     private void TryPlace()
     {
-        if (!hasValidHit || hoopPlaced) return;
+        if (!hasValidHit || hoopPlaced || hoop == null) return;
 
-        // Offset outward along the wall normal so the hoop's backboard sits flush against
-        // the wall instead of clipping into it (pivot offset + depth-occlusion buffer).
-        // Uses cachedEnvHit (live depth), not the room-plane cachedHit — that's what
-        // passthrough occlusion actually renders against, so this is what keeps the
-        // hoop from visually sinking into the wall.
-        Vector3 placementPosition = cachedEnvHit.point + cachedEnvHit.normal * (hoopBackOffset + clippingBuffer);
+        ComputePlacementPose(cachedEnvHit, out Vector3 placementPosition, out Quaternion placementRotation);
 
         var hoopToPlace = Instantiate(hoop);
-        hoopToPlace.transform.SetPositionAndRotation(
-            placementPosition,
-            Quaternion.LookRotation(cachedEnvHit.normal, Vector3.up)
-            );
+        hoopToPlace.transform.SetPositionAndRotation(placementPosition, placementRotation);
         PlacedHoopTransform = hoopToPlace.transform;
 
         // if no MRUK component is present in the scene, add an OVRSpatialAnchor component
@@ -180,9 +224,141 @@ public class InstantPlacementController : MonoBehaviour
 
         hoopPlaced = true;
         HideVisual();
+        OnHoopPlaced?.Invoke();
 
-        // Game clock starts the moment the hoop is placed — Pop-A-Shot arcade cabinets
-        // start the timer the instant the machine is ready, not on a separate "ready" press.
-        ScoreManager.Instance?.StartGame();
+        // The round no longer starts the instant the hoop lands: a 3-2-1 countdown runs first and
+        // starts the clock on GO. Falls back to an immediate start if there's no countdown component.
+        if (roundCountdown != null)
+        {
+            roundCountdown.StartCountdown();
+        }
+        else if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.StartGame();
+        }
+    }
+
+    /// <summary>
+    /// Removes the placed hoop and goes back to the placement ray + ghost preview so the player can
+    /// choose a new spot. Call from the end-of-round panel ("MOVE HOOP"). Placing again starts a fresh countdown.
+    /// </summary>
+    public void BeginRepositioning()
+    {
+        if (!hoopPlaced) return;
+
+        if (PlacedHoopTransform != null) Destroy(PlacedHoopTransform.gameObject); // its score UI is a child, so it goes too
+        PlacedHoopTransform = null;
+
+        hoopPlaced = false;
+        hasValidHit = false;
+        ignoreTriggerUntil = Time.time + RepositionInputLockSeconds;
+
+        OnHoopRemoved?.Invoke();
+    }
+
+    // ---------------------------------------------------------------- ghost
+
+    /// <summary>
+    /// Builds a see-through, non-interactive copy of the hoop prefab: scripts, rigidbodies and
+    /// colliders are stripped (so it can't score, collide, or block raycasts) and its materials
+    /// are made translucent.
+    /// </summary>
+    private GameObject BuildGhost()
+    {
+        // Instantiate under an INACTIVE parent so the prefab's Awake/OnEnable (ScoreZone, RimEntryZone...)
+        // never run on the ghost; the gameplay components are removed before it is ever activated.
+        GameObject holder = new GameObject("GhostHolder");
+        holder.SetActive(false);
+
+        GameObject ghost = Instantiate(hoop, holder.transform);
+        ghost.name = hoop.name + "_Ghost";
+
+        // Scripts first (they may [RequireComponent] a collider), then physics.
+        foreach (MonoBehaviour behaviour in ghost.GetComponentsInChildren<MonoBehaviour>(true)) DestroyImmediate(behaviour);
+        foreach (Joint joint in ghost.GetComponentsInChildren<Joint>(true)) DestroyImmediate(joint);
+        foreach (Rigidbody body in ghost.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(body);
+        foreach (Collider col in ghost.GetComponentsInChildren<Collider>(true)) DestroyImmediate(col);
+
+        ApplyGhostLook(ghost);
+
+        ghost.SetActive(false);
+        ghost.transform.SetParent(null, false);
+        Destroy(holder);
+
+        return ghost;
+    }
+
+    private void ApplyGhostLook(GameObject ghost)
+    {
+        foreach (Renderer rend in ghost.GetComponentsInChildren<Renderer>(true))
+        {
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows = false;
+
+            if (ghostMaterial != null)
+            {
+                Material[] replaced = new Material[rend.sharedMaterials.Length];
+                for (int i = 0; i < replaced.Length; i++) replaced[i] = ghostMaterial;
+                rend.sharedMaterials = replaced;
+                continue;
+            }
+
+            // .materials hands back per-renderer COPIES, so the real hoop prefab's materials stay untouched.
+            Material[] copies = rend.materials;
+            foreach (Material m in copies) MakeTransparent(m, ghostOpacity);
+            rend.materials = copies;
+        }
+    }
+
+    // Best-effort conversion to alpha-blended for URP Lit/Unlit and Built-in Standard. Custom shaders may
+    // ignore it — assign a transparent material to "Ghost Material" in that case.
+    private static void MakeTransparent(Material m, float alpha)
+    {
+        if (m.HasProperty("_BaseColor"))
+        {
+            Color c = m.GetColor("_BaseColor");
+            c.a = alpha;
+            m.SetColor("_BaseColor", c);
+        }
+        if (m.HasProperty("_Color"))
+        {
+            Color c = m.GetColor("_Color");
+            c.a = alpha;
+            m.SetColor("_Color", c);
+        }
+
+        if (m.HasProperty("_Surface")) // URP
+        {
+            m.SetFloat("_Surface", 1f); // 1 = Transparent
+            m.SetFloat("_Blend", 0f);   // 0 = Alpha
+            m.SetFloat("_ZWrite", 0f);
+            m.SetFloat("_AlphaClip", 0f);
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (m.HasProperty("_SrcBlendAlpha")) m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            if (m.HasProperty("_DstBlendAlpha")) m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.SetShaderPassEnabled("ShadowCaster", false);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+        else if (m.HasProperty("_Mode")) // Built-in Standard
+        {
+            m.SetFloat("_Mode", 3f); // 3 = Transparent
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+    }
+
+    private T FindOrAdd<T>() where T : Component
+    {
+        T existing = FindFirstObjectByType<T>();
+        return existing != null ? existing : gameObject.AddComponent<T>();
     }
 }

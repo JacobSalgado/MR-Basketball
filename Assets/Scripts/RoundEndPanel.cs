@@ -174,10 +174,27 @@ public class RoundEndPanel : MonoBehaviour
         ShowLeaderboard();
     }
 
+    /// <summary>"RETRY HERE": same hoop, same spot — straight into a fresh 3-2-1 countdown.</summary>
     private void OnRetryPressed()
     {
         Hide();
-        if (ScoreManager.Instance != null) ScoreManager.Instance.StartGame();
+
+        RoundCountdown countdown = instantPlacementController != null ? instantPlacementController.Countdown : null;
+        if (countdown != null)
+        {
+            countdown.StartCountdown();
+        }
+        else if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.StartGame(); // no countdown component available: start immediately
+        }
+    }
+
+    /// <summary>"MOVE HOOP": remove the hoop and go back to the placement ray + ghost preview. Placing again starts the countdown.</summary>
+    private void OnMoveHoopPressed()
+    {
+        Hide();
+        if (instantPlacementController != null) instantPlacementController.BeginRepositioning();
     }
 
     private void RefreshNameLabel()
@@ -357,7 +374,9 @@ public class RoundEndPanel : MonoBehaviour
             rowLabels[i] = CreateText(leaderboardView.transform, $"Row{i + 1}", string.Empty, 32f, TextAlignmentOptions.Left, new Vector2(0f, 55f - i * 50f), new Vector2(780f, 44f));
         }
 
-        CreateButton(leaderboardView.transform, "RETRY", new Vector2(0f, -240f), new Vector2(320f, 84f), confirmColor, OnRetryPressed);
+        // Two choices side by side: replay with the hoop where it is, or pick a new spot first.
+        CreateButton(leaderboardView.transform, "RETRY HERE", new Vector2(-210f, -240f), new Vector2(380f, 84f), confirmColor, OnRetryPressed);
+        CreateButton(leaderboardView.transform, "MOVE HOOP", new Vector2(210f, -240f), new Vector2(380f, 84f), keyColor, OnMoveHoopPressed);
     }
 
     private GameObject CreateContainer(string objectName)

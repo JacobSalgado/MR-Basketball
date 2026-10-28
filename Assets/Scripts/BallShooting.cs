@@ -18,6 +18,7 @@ public class BallShooting : MonoBehaviour
     [SerializeField] private LineRenderer trajectoryLine;
     [SerializeField] private int trajectoryPoints = 30;
     [SerializeField] private float trajectoryTimeStep = 0.05f;
+    [SerializeField, Range(0.1f, 1f)] private float trajectoryRevealFraction = 0.5f;
 
     [Header("Shot Lifecycle")]
     [SerializeField] private float maxFlightTime = 4f;
@@ -59,6 +60,8 @@ public class BallShooting : MonoBehaviour
             trajectoryLine.positionCount = trajectoryPoints;
             trajectoryLine.enabled = false;
         }
+        if (instantPlacementController != null)
+            instantPlacementController.OnHoopRemoved += HandleHoopRemoved;
     }
 
     private void Start()
@@ -108,6 +111,26 @@ public class BallShooting : MonoBehaviour
         basketballInstance.SetActive(false);
     }
 
+    /// <summary>
+    /// A round is being set up (countdown begins): put a fresh ball in the hand. It can't be aimed or fired
+    /// until the countdown ends because Update only acts while ScoreManager.IsGameActive.
+    /// (The very first round is handled by Update once the hoop exists.)
+    /// </summary>
+    private void HandleRoundPrepared()
+    {
+        if (!activeBall) return;
+        RespawnBall();
+    }
+
+    /// <summary>The hoop was removed so the player can reposition it: reset the ball and hide it until the next hoop is placed.</summary>
+    private void HandleHoopRemoved()
+    {
+        if (!activeBall) return;
+
+        RespawnBall(); // clean slate: kinematic, parented to the hand, tracker reset, state InHand
+        basketballInstance.SetActive(false);
+        activeBall = false; // Update re-activates the ball when the next hoop is placed
+    }
 
 
     /// <summary>
@@ -185,6 +208,11 @@ public class BallShooting : MonoBehaviour
 
     private void DrawTrajectoryPreview(Vector3 origin, Vector3 initialVelocity)
     {
+        // Only the first part of the arc is drawn; the rest is up to the player's judgment.
+        int visiblePoints = Mathf.Clamp(Mathf.RoundToInt(trajectoryPoints * trajectoryRevealFraction), 2, trajectoryPoints);
+        if (trajectoryLine.positionCount != visiblePoints) trajectoryLine.positionCount = visiblePoints;
+
+
         Vector3 gravity = Physics.gravity;
         for (int i = 0; i < trajectoryPoints; i++)
         {

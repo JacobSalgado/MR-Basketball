@@ -489,6 +489,85 @@ Transform:
   m_Children: []
   m_Father: {fileID: 918994055}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &47797308
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 47797311}
+  - component: {fileID: 47797310}
+  - component: {fileID: 47797309}
+  m_Layer: 0
+  m_Name: EventSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &47797309
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47797308}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01614664b831546d2ae94a42149d80ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.UI.InputSystemUIInputModule
+  m_SendPointerHoverToParent: 1
+  m_MoveRepeatDelay: 0.5
+  m_MoveRepeatRate: 0.1
+  m_XRTrackingOrigin: {fileID: 0}
+  m_ActionsAsset: {fileID: -944628639613478452, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_PointAction: {fileID: -1654692200621890270, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_MoveAction: {fileID: -8784545083839296357, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_SubmitAction: {fileID: 392368643174621059, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_CancelAction: {fileID: 7727032971491509709, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_LeftClickAction: {fileID: 3001919216989983466, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_MiddleClickAction: {fileID: -2185481485913320682, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_RightClickAction: {fileID: -4090225696740746782, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_ScrollWheelAction: {fileID: 6240969308177333660, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_TrackedDevicePositionAction: {fileID: 6564999863303420839, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_TrackedDeviceOrientationAction: {fileID: 7970375526676320489, guid: ca9f5fa95ffab41fb9a615ab714db018, type: 3}
+  m_DeselectOnBackgroundClick: 1
+  m_PointerBehavior: 0
+  m_CursorLockBehavior: 0
+  m_ScrollDeltaPerTick: 6
+--- !u!114 &47797310
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47797308}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76c392e42b5098c458856cdf6ecaaaa1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.EventSystems.EventSystem
+  m_FirstSelected: {fileID: 0}
+  m_sendNavigationEvents: 1
+  m_DragThreshold: 10
+--- !u!4 &47797311
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 47797308}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &55118364
 GameObject:
   m_ObjectHideFlags: 0
@@ -1110,6 +1189,9 @@ GameObject:
   - component: {fileID: 152888707}
   - component: {fileID: 152888710}
   - component: {fileID: 152888711}
+  - component: {fileID: 152888712}
+  - component: {fileID: 152888714}
+  - component: {fileID: 152888713}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1135,12 +1217,14 @@ MonoBehaviour:
   hoopBackOffset: 0.02
   clippingBuffer: 0.005
   lineRenderer: {fileID: 1831178089}
-  reticlePrefab: {fileID: 1936781341176157009, guid: d031478e7cb458f4dbc53d1fbd7adf41, type: 3}
   maxRayDistance: 5
   validColor: {r: 0, g: 1, b: 1, a: 1}
   invalidColor: {r: 1, g: 0, b: 0, a: 1}
+  ghostOpacity: 0.35
+  ghostMaterial: {fileID: -9051701563982786173, guid: 6b7e99fb01590ee4881429e0ce040190, type: 3}
+  placementPrompt: {fileID: 152888714}
+  roundCountdown: {fileID: 152888713}
   raycastManager: {fileID: 152888708}
-  scoreManager_: {fileID: 0}
   hoopPlaced: 0
 --- !u!114 &152888708
 MonoBehaviour:
@@ -1184,17 +1268,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BallShooting
   rightController: {fileID: 1492928956}
   basketballPrefab: {fileID: 2332839571302480060, guid: 55909966caf60e849a4fb645fc0de046, type: 3}
-  maxYawDegrees: 35
-  minPitchDegrees: 25
-  maxPitchDegrees: 75
   minLaunchSpeed: 3
   maxLaunchSpeed: 9
   chargeDeadzone: 0.15
   trajectoryLine: {fileID: 1123157796}
   trajectoryPoints: 30
   trajectoryTimeStep: 0.05
+  trajectoryRevealFraction: 0.5
   maxFlightTime: 4
   outOfPlayHeight: -2
+  ballMass: 0.6
+  ballDrag: 0.05
+  ballAngularDrag: 0.3
+  backspinAmount: 8
   instantPlacementController: {fileID: 152888707}
 --- !u!114 &152888711
 MonoBehaviour:
@@ -1210,6 +1296,78 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
   gameDuration: 60
   swishBonus: 1
+--- !u!114 &152888712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 152888706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dacaabb1aad6184499071f2a91e67d83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoreUI
+  instantPlacementController: {fileID: 152888707}
+  scoreUIPrefab: {fileID: 1312686659886339160, guid: 9f02b221b983fa84ebe6daa5aafa78a1, type: 3}
+  localOffsetFromHoop: {x: 0, y: 0.6, z: 0}
+  localRotationOffset: {x: 0, y: 180, z: 0}
+  scoreOffset: {x: 0.8, y: 0.3, z: 0.03}
+  swishOffset: {x: -0.07, y: -0.27, z: 0.03}
+  timerOffset: {x: 0, y: 0.75, z: 0.03}
+  previewSwishLayout: 0
+  scoreTextChildName: ScoreText
+  timerTextChildName: TimerText
+  swishTextChildName: SwishText
+  timeUpColor: {r: 1, g: 0, b: 0, a: 1}
+  swishColor: {r: 0.2, g: 1, b: 0.3, a: 1}
+  swishFlashDuration: 0.8
+--- !u!114 &152888713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 152888706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10c696c3187561949911b821b531b00b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RoundCountdown
+  headAnchor: {fileID: 1279383059}
+  startFrom: 3
+  secondsPerNumber: 1
+  goDuration: 0.7
+  distanceFromHead: 1.3
+  heightOffset: 0.1
+  followSpeed: 6
+  fontSize: 260
+  goText: GO!
+  numberColor: {r: 1, g: 1, b: 1, a: 1}
+  goColor: {r: 0.2, g: 1, b: 0.3, a: 1}
+--- !u!114 &152888714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 152888706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1594983f69e0c404bbfc0176c0205220, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlacementPrompt
+  headAnchor: {fileID: 1279383059}
+  distance: 1.3
+  heightOffset: -0.3
+  followSpeed: 4
+  fontSize: 56
+  readyText: 'PRESS THE RIGHT TRIGGER
+
+    TO PLACE THE HOOP'
+  aimText: POINT AT A WALL
+  readyColor: {r: 0, g: 1, b: 1, a: 1}
+  aimColor: {r: 1, g: 0.45, b: 0.45, a: 1}
 --- !u!1 &154995999
 GameObject:
   m_ObjectHideFlags: 0
@@ -6894,6 +7052,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 724664720}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1279383059 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 400002, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
+  m_PrefabInstance: {fileID: 1492928954}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1295701306
 GameObject:
   m_ObjectHideFlags: 0
@@ -7986,6 +8149,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 487254, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1123157797}
+    - targetCorrespondingSourceObject: {fileID: 487254, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1940428723}
     - targetCorrespondingSourceObject: {fileID: 4484591312116288, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1748679673}
@@ -10698,6 +10864,67 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.008976316, y: -0.064772196, z: -0.067473285}
     m_Extent: {x: 0.0043462086, y: 0.006806761, z: 0.0068782493}
   m_DirtyAABB: 0
+--- !u!1 &1940428722
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1940428723}
+  - component: {fileID: 1940428724}
+  m_Layer: 0
+  m_Name: RoundEndPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1940428723
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940428722}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1.05323, y: 0, z: 6.45055}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1492928956}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1940428724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1940428722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89e0b155cbf951f45a077adfc49e3893, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RoundEndPanel
+  rayOrigin: {fileID: 0}
+  headAnchor: {fileID: 0}
+  pointerLine: {fileID: 0}
+  instantPlacementController: {fileID: 0}
+  distanceFromHead: 1.1
+  heightOffset: -0.1
+  panelScale: 0.001
+  maxPointerDistance: 5
+  inputDelay: 0.5
+  maxNameLength: 10
+  forceNameEntryForTesting: 0
+  backgroundColor: {r: 0.05, g: 0.05, b: 0.1, a: 0.92}
+  keyColor: {r: 0.18, g: 0.2, b: 0.32, a: 1}
+  keyHoverColor: {r: 0.25, g: 0.6, b: 0.9, a: 1}
+  confirmColor: {r: 0.15, g: 0.55, b: 0.25, a: 1}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
 --- !u!1 &1948450466
 GameObject:
   m_ObjectHideFlags: 0
@@ -11307,3 +11534,4 @@ SceneRoots:
   - {fileID: 1566625158}
   - {fileID: 152888709}
   - {fileID: 645684946}
+  - {fileID: 47797311}

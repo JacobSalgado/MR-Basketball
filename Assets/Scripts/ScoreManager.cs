@@ -21,6 +21,9 @@ public class ScoreManager : MonoBehaviour
     public float TimeRemaining { get; private set; }
     public bool IsGameActive { get; private set; }
 
+    /// <summary>fired when a round is set up but not yet running. score and clock are reset, play is locked.</summary>
+    public event Action OnRoundPrepared;
+
     /// <summary>Fired whenever CurrentScore changes.</summary>
     public event Action OnGameStarted;
 
@@ -56,6 +59,21 @@ public class ScoreManager : MonoBehaviour
         {
             EndGame();
         }
+    }
+
+    /// <summary>
+    /// Resets score and clock to their starting values WITHOUT starting the clock — the countdown phase.
+    /// IsGameActive stays false, so shots can't be taken or scored until StartGame() is called on GO.
+    /// </summary>
+    public void PrepareRound()
+    {
+        CurrentScore = 0;
+        TimeRemaining = gameDuration;
+        IsGameActive = false;
+
+        OnRoundPrepared?.Invoke();
+        OnScoreChanged?.Invoke(CurrentScore);
+        OnTimeChanged?.Invoke(TimeRemaining);
     }
 
     public void StartGame()
