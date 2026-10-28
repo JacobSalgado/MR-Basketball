@@ -5,7 +5,8 @@ using UnityEngine;
 /// Tracks score and a countdown timer for a play session, and persists the
 /// best score across sessions via PlayerPrefs. Place on a single persistent
 /// GameObject in the scene. Raises events so UI (ScoreUI) can react instead
-/// of polling every frame.
+/// of polling every frame. 
+/// NOTE: High scores are placed in HighScoreStore (JSON)
 /// </summary>
 public class ScoreManager : MonoBehaviour
 {
@@ -21,13 +22,18 @@ public class ScoreManager : MonoBehaviour
     public bool IsGameActive { get; private set; }
 
     /// <summary>Fired whenever CurrentScore changes.</summary>
+    public event Action OnGameStarted;
+
+    /// <summary>Fired whenever CurrentScore changes.</summary>
     public event Action<int> OnScoreChanged;
+
+    /// <summary>Fired ffor every made shot: points awarded, and whether it was a clean swish </summary>
+    public event Action<int, bool> OnShotScored;
+
     /// <summary>Fired every frame the game is active, with seconds remaining.</summary>
     public event Action<float> OnTimeChanged;
     /// <summary>Fired once when the timer hits zero, with the final score.</summary>
     public event Action<int> OnGameEnded;
-
-    private const string HighScoreKey = "HighScore";
 
     private void Awake()
     {
@@ -37,8 +43,6 @@ public class ScoreManager : MonoBehaviour
             return;
         }
         Instance = this;
-
-        HighScore = PlayerPrefs.GetInt(HighScoreKey, 0);
     }
 
     private void Update()
@@ -60,6 +64,7 @@ public class ScoreManager : MonoBehaviour
         TimeRemaining = gameDuration;
         IsGameActive = true;
 
+        OnGameStarted?.Invoke();
         OnScoreChanged?.Invoke(CurrentScore);
         OnTimeChanged?.Invoke(TimeRemaining);
     }
@@ -72,20 +77,13 @@ public class ScoreManager : MonoBehaviour
         CurrentScore += points;
         Debug.Log("Register Score called! Current score is: " + CurrentScore);
         OnScoreChanged?.Invoke(CurrentScore);
+        OnShotScored?.Invoke(points, wasSwish);
     }
 
     private void EndGame()
     {
         IsGameActive = false;
         TimeRemaining = 0f;
-
-        if (CurrentScore > HighScore)
-        {
-            HighScore = CurrentScore;
-            PlayerPrefs.SetInt(HighScoreKey, HighScore);
-            PlayerPrefs.Save();
-        }
-
         OnGameEnded?.Invoke(CurrentScore);
     }
 }

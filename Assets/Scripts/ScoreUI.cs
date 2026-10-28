@@ -1,10 +1,10 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
 /// <summary>
 /// Spawns a world-space score/timer display above the placed hoop, Pop-A-Shot
 /// style, and keeps it updated via ScoreManager's events (no per-frame polling).
-/// Attach to any persistent GameObject in the scene.
 /// </summary>
 public class ScoreUI : MonoBehaviour
 {
@@ -27,10 +27,21 @@ public class ScoreUI : MonoBehaviour
     [Header("Prefab Child Names")]
     [SerializeField] private string scoreTextChildName = "ScoreText";
     [SerializeField] private string timerTextChildName = "TimerText";
+    [SerializeField] private string swishTextChildName = "SwishText";
+
+    [Header("Feedback")]
+    [SerializeField] private Color timeUpColor = Color.red;
+    [SerializeField] private Color swishColor = new Color(0.2f, 1f, 0.3f, 1.0f);
+    [SerializeField] private float swishFlashDuration = 0.8f;
 
     private GameObject uiInstance;
     private TMP_Text scoreText;
     private TMP_Text timerText;
+    private TMP_Text swishText;
+    private Color scoreNormalColor = Color.white;
+    private Color timerNormalColor = Color.white;
+    private int lastDisplayedSeconds = -1;
+    private Coroutine flashRoutine;
     private bool spawned = false;
 
     private void Update()
@@ -55,6 +66,7 @@ public class ScoreUI : MonoBehaviour
 
         scoreText = FindChildComponent<TMP_Text>(uiInstance.transform, scoreTextChildName);
         timerText = FindChildComponent<TMP_Text>(uiInstance.transform, timerTextChildName);
+        swishText = FindChildComponent<TMP_Text>(uiInstance.transform, swishTextChildName);
 
         spawned = true;
 
@@ -62,6 +74,7 @@ public class ScoreUI : MonoBehaviour
         {
             ScoreManager.Instance.OnScoreChanged += UpdateScoreText;
             ScoreManager.Instance.OnTimeChanged += UpdateTimerText;
+            ScoreManager.Instance.OnShotScored += HandleShotScored;
             ScoreManager.Instance.OnGameEnded += HandleGameEnded;
 
             // Prime the display immediately — StartGame() fires in the same frame
@@ -83,11 +96,40 @@ public class ScoreUI : MonoBehaviour
         timerText.text = $"{seconds / 60:00}:{seconds % 60:00}";
     }
 
+    private void HandleShotScored(int points, bool wasSwish)
+    {
+        if (!wasSwish) return;
+
+        if (flashRoutine != null) StopCoroutine(flashRoutine);
+        flashRoutine = StartCoroutine(SwishFlash(points));
+    }
+
+    private IEnumerator SwishFlash(int points)
+    {
+        if (scoreText != null) scoreText.color = swishColor;
+        if (swishText != null)
+        {
+            swishText.text = $"SWISH + {points}";
+            swishText.gameObject.SetActive(true);
+        }
+        yield return new WaitForSeconds(swishFlashDuration);
+
+        ClearSwishFlash();
+    }
+
+    private void ClearSwishFlash()
+    {
+        if (scoreText != null) scoreText.color = scoreNormalColor;
+        if (swishText != null) swishText.gameObject.SetActive(false);
+        flashRoutine = null;
+    }
+
     private void HandleGameEnded(int finalScore)
     {
         // Placeholder end-state — extend once the rest of the game-over flow exists
         // (e.g. swap to a "GAME OVER" label, show high score, prompt to replay).
         if (timerText != null) timerText.text = "00:00";
+        timerText.color = timeUpColor;
     }
 
     private static T FindChildComponent<T>(Transform root, string childName) where T : Component
@@ -110,6 +152,7 @@ public class ScoreUI : MonoBehaviour
         {
             ScoreManager.Instance.OnScoreChanged -= UpdateScoreText;
             ScoreManager.Instance.OnTimeChanged -= UpdateTimerText;
+            ScoreManager.Instance.OnShotScored -= HandleShotScored;
             ScoreManager.Instance.OnGameEnded -= HandleGameEnded;
         }
     }

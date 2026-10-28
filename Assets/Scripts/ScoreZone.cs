@@ -30,13 +30,15 @@ public class ScoreZone : MonoBehaviour
         if (rb == null || rb.linearVelocity.y >= 0f) return;
 
         BallContactTracker tracker = other.GetComponent<BallContactTracker>();
-        bool wasSwish = tracker == null || !tracker.HasTouchedBoard;
+        if (tracker == null || !tracker.PassedRimEntry) return;
+
+        bool wasSwish = !tracker.HasTouchedBoard;
+        tracker.SetPassedRimEntry(false); // use the flag so one pass through the hoop can only score once
 
         if (ScoreManager.Instance != null)
             ScoreManager.Instance.RegisterScore(wasSwish);
 
         if (ballShooting != null)
             ballShooting.OnBallResult(true);
-
     }
 }

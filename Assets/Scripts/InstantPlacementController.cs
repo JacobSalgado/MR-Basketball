@@ -31,6 +31,11 @@ public class InstantPlacementController : MonoBehaviour
     // since the prefab's transform has no relation to where the hoop ends up in the room.
     public Transform PlacedHoopTransform { get; private set; }
 
+    // Exposed so the end-of-round panel can reuse the same controller anchor and the same
+    // (known-visible) ray material instead of needing its own Inspector wiring.
+    public Transform RightControllerAnchor => rightControllerAnchor;
+    public Material RayMaterial => lineRenderer != null ? lineRenderer.sharedMaterial : null;
+
     private GameObject reticleInstance;
 
     // cached from the last raycast this frame, consumed by TryPlace on trigger press

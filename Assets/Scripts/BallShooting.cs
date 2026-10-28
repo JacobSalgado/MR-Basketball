@@ -36,7 +36,6 @@ public class BallShooting : MonoBehaviour
     private GameObject basketballInstance;
     private Rigidbody basketballRb;
     private BallContactTracker basketballContactTracker;
-    private Transform hoopTarget; // kept for scoring/UI reference, no longer used for aiming
 
     private float currentSpeed01; // 0-1, how "charged" the shot is
     private float flightTimer;
@@ -62,11 +61,20 @@ public class BallShooting : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // subscribed in Start so ScoreManager.Instance is guaranteed to be set
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.OnGameStarted += HandleRoundStarted;
+            ScoreManager.Instance.OnGameEnded += HandleRoundEnded;
+        }
+    }
+
     private void Update()
     {
         if (instantPlacementController.hoopPlaced && !activeBall)
         {
-            hoopTarget = instantPlacementController.PlacedHoopTransform;
             basketballInstance.SetActive(true);
             activeBall = true;
         }
@@ -84,6 +92,23 @@ public class BallShooting : MonoBehaviour
                 break;
         }
     }
+
+    /// <summary>Retry pressed: put a fresh ball in the hand. (The very first round is handled by Update once the hoop exists.)</summary>
+    private void HandleRoundStarted()
+    {
+        if (!activeBall) return;
+        RespawnBall();
+    }
+
+    /// <summary>Timer hit zero: stop aiming and hide the ball while the end-of-round panel is up.</summary>
+    private void HandleRoundEnded(int finalScore)
+    {
+        if (!activeBall) return;
+        CancelAiming();
+        basketballInstance.SetActive(false);
+    }
+
+
 
     /// <summary>
     /// Sets mass/drag for realistic weight and switches to Continuous Dynamic
@@ -214,6 +239,7 @@ public class BallShooting : MonoBehaviour
         ConfigureBallPhysics(basketballRb);
         basketballContactTracker = basketballInstance.GetComponent<BallContactTracker>();
 
+        if (trajectoryLine != null) trajectoryLine.enabled = false;
         state = ShotState.InHand;
     }
 
@@ -226,5 +252,14 @@ public class BallShooting : MonoBehaviour
     {
         if (state != ShotState.InFlight) return;
         RespawnBall();
+    }
+
+    private void OnDestroy()
+    {
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.OnGameStarted -= HandleRoundStarted;
+            ScoreManager.Instance.OnGameEnded -= HandleRoundEnded;
+        }
     }
 }
